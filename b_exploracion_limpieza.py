@@ -48,71 +48,74 @@ genres_dummies = movies['genres'].str.get_dummies(sep='|')
 movies_sep = pd.concat([movies, genres_dummies], axis=1)
 movies_sep
 
-# Se elimina la columna 'genres' 
-movies_sep = movies_sep.drop(columns=['genres'])
-movies_sep.head()
+# VISUALIZACIÓN DE LOS DATOS
 
-
-# Cuántas películas hay por género 
-genre_counts = movies_sep.iloc[:, 3:].sum()
-print("Películas por género:")
-genre_counts
-
-
-# Calificaciones generales
-cr = pd.read_sql("""SELECT
-                 "rating" as rating,
-                 count(*) as conteo
-                 FROM ratings
-                 group by "rating"
-                 order by rating""", conn)
+cr = pd.read_sql("""
+    SELECT 
+        "rating" AS rating,
+        COUNT(*) AS conteo,
+        (COUNT(*) * 100.0 / SUM(COUNT(*)) OVER ()) AS porcentaje
+    FROM ratings
+    GROUP BY "rating"
+    ORDER BY "rating"
+""", conn)
 
 cr
 
 
-# Consultar cuántas películas ha calificado cada usuario
-rating_users = pd.read_sql('''
-    SELECT userId AS user_id,
-           COUNT(*) AS cnt_rat
-    FROM ratings
-    GROUP BY userId
-    ORDER BY cnt_rat ASC
-''', conn)
+# Visualización del conteo de calificaciones
 
-fig = px.histogram(rating_users, x='cnt_rat', 
-                   title='Histograma de Frecuencia de Número de Calificaciones por Usuario',
-                   labels={'cnt_rat': 'Número de Calificaciones'},
-                   color_discrete_sequence=['skyblue'])
+pd.read_sql("select count(*) from ratings", conn)
 
-fig.update_layout(xaxis_title='Número de Calificaciones', yaxis_title='Frecuencia')
+# Definir los colores según las calificaciones
+colors = []
+for rating in cr['rating']:
+    if rating == 0.5:
+        colors.append('#264653')  
+    elif 1 <= rating <= 2:
+        colors.append('#fe4a49')  
+    elif 2.5 <= rating <= 3.5:
+        colors.append('#fed766')  
+    elif 4 <= rating <= 5:
+        colors.append('#009fb7')  
+
+data  = go.Bar( x=cr.rating,y=cr.conteo, text=cr.conteo, textposition="outside", marker_color=colors)
+
+layout = go.Layout(
+    title={
+        'text': "Conteo de Calificaciones",
+        'y': 0.94,
+        'x': 0.5, 
+        'xanchor': 'center',  # Anclar el título al centro
+        'yanchor': 'top'
+    },
+    xaxis={
+        'title': 'Calificación',
+        'tickvals': cr['rating']  # Asegurar que todos los valores del eje X se muestren
+    }, 
+    yaxis={'title': 'Cantidad'},
+    width=800,   # Ancho del gráfico
+    height=600   # Alto del gráfico
+)
+
+# Crear la figura y mostrar
+fig = go.Figure(data=data, layout=layout)
 fig.show()
 
-rating_users.describe()
 
-# Consultar cuántas calificaciones tiene cada película
-rating_movies = pd.read_sql(''' 
-    SELECT movieId AS movie_id, 
-           COUNT(*) AS cnt_rat 
-    FROM ratings 
-    GROUP BY movieId 
-    ORDER BY cnt_rat DESC
-''', conn)
+# Calificaciones por usuario
+rating_users=pd.read_sql(''' SELECT "userId" as user_id,
+                         count(*) as cnt_rat
+                         FROM ratings
+                         group by "userId"
+                         order by cnt_rat asc
+                         ''',conn)
 
-# Mostrar las primeras filas del resultado
-rating_movies.head()
-rating_movies.describe()
+rating_users
 
-fig  = plt.hist(rating_movies['cnt_rat'])
+# Histograma número de calificaciones por usuario
+fn.plot_histogram(rating_users, 'cnt_rat', bins=20, color='#264653')
 
-
-
-
-
-
-
-
-
-
-
+## PREPROCESAMIENTO
 
 
