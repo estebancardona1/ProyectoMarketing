@@ -18,31 +18,41 @@ create table movies_sel as select movieId,
                          from ratings
                          group by movieId
                          having cnt_rat >= 20
-                         order by cnt_rat desc ;                  
+                         order by cnt_rat desc ;  
+            
 
 -------crear tablas filtradas de películas, usuarios y calificaciones ----
 
-drop table if exists merge_ratings;
+drop table if exists ratings_filtered;
 
-create table merge_ratings as
+create table ratings_filtered as
 select a.userId as user_id,
 a.movieId as movie_id,
-a.rating as movie_rating
+a.rating as movie_rating,
 a.timestamp as timestamp
 from ratings a 
 inner join movies_sel b
 on a.movieId = b.movieId;
+ 
+drop table if exists movies_final;
+
+create table movies_final as select 
+a.*,
+b.*
+from movies a inner join
+movies_sel b on a.movieId = b.movieId;
 
 ---crear tabla completa ----
 
 drop table if exists ratings_final;
 
-CREATE TABLE ratings_final AS
-SELECT a.user_id,
+create table ratings_final as
+select a.user_id,
        a.movie_id,
        a.movie_rating,
        a.timestamp,
        b.*
-FROM merge_ratings a
-INNER JOIN movies_sel b
-ON a.movie_id = b.movieId;
+from ratings_filtered a
+inner join movies_final b
+on a.movie_id = b.movieId
+WHERE a.movie_rating > 0.5;
