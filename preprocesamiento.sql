@@ -5,8 +5,8 @@ drop table if exists user_sel;
 create table user_sel as select "userId" as user_id,
                          count(*) as cnt_rat
                          FROM ratings
-                         group by userId
-                         having cnt_rat
+                         group by "userId"
+                         having cnt_rat >= 20 and cnt_rat <=1000
                          order by cnt_rat asc ;
 
 ---
@@ -23,6 +23,20 @@ create table movies_sel as select movieId,
 
 -------crear tablas filtradas de películas, usuarios y calificaciones ----
 
+drop table if exists ratings_final;
+
+select a."userId" as user_id,
+a."movieId" as movie_id,
+a."rating" as movie_rating
+a."timestamp" as timestamp
+from ratings a
+inner join user_sel c
+on a."userId" =c.user_id;
+
+
+
+--- SANTIAGO
+
 drop table if exists ratings_filtered;
 
 create table ratings_filtered as
@@ -34,6 +48,8 @@ from ratings a
 inner join movies_sel b
 on a.movieId = b.movieId;
  
+
+
 drop table if exists movies_final;
 
 create table movies_final as select 
