@@ -37,30 +37,114 @@ df_final2 = pd.read_sql('''SELECT user_id, movie_id, title,
 ###         TOP 10 (PELÍCULAS MEJORES CALIFICADAS)
 ### --------------------------------------------------------------------------------
 
-pd.read_sql("""SELECT title, 
-            ROUND(AVG(movie_rating), 2) AS score,
-            COUNT(*) as views
-            FROM final_ratings
-            GROUP by title
-            HAVING views >= 30 
-            ORDER by score desc
-            limit 10
-            """, conn)
+top_score = pd.read_sql("""SELECT title, 
+                ROUND(AVG(movie_rating), 2) AS score,
+                COUNT(*) as views
+                FROM final_ratings
+                GROUP by title
+                HAVING views >= 20 
+                ORDER by score desc
+                limit 10
+                """, conn)
+
+# Extraer el título de la película #1
+top_movie = top_score.iloc[0]['title']
+
+# Eliminar los últimos 6 caracteres
+top_movie = top_movie[:-6]
+
+fn.fetch_movie_poster(top_movie)
+top_score
 
 
-###         TOP 10 (PELÍCULAS MÁS VISTAS Y MEJORES CALIFICADAS)
+###         TOP 10 (PELÍCULAS MÁS VISTAS)
 ### --------------------------------------------------------------------------------
 
-pd.read_sql("""SELECT title, 
-            ROUND(AVG(movie_rating), 2) AS score,
-            COUNT(*) as views
-            FROM final_ratings
-            GROUP by title
-            HAVING score >= 4 
-            ORDER BY views desc
-            """, conn)
+top_score = pd.read_sql("""SELECT title, 
+                ROUND(AVG(movie_rating), 2) AS score,
+                COUNT(*) as views
+                FROM final_ratings
+                GROUP by title
+                HAVING score >= 4 
+                ORDER BY views desc
+                LIMIT 10
+                """, conn)
 
-fn.fetch_movie_poster("Toy Story")
+# Extraer el título de la película #1
+top_movie = top_score.iloc[0]['title']
+
+# Eliminar los últimos 6 caracteres
+top_movie = top_movie[:-6]
+
+fn.fetch_movie_poster(top_movie)
+top_score
+
+###         TOP 10 (PELÍCULAS MÁS VISTAS EN EL ÚLTIMO AÑO)
+### --------------------------------------------------------------------------------
+
+top_score = pd.read_sql('''
+            SELECT title, 
+            ROUND(AVG(movie_rating), 2) AS score,
+            COUNT(movie_id) AS views
+            FROM final_ratings
+            WHERE strftime('%Y', datetime(timestamp, 'unixepoch')) = '2018'
+            GROUP BY title
+            HAVING score >= 4
+            ORDER BY views DESC
+            LIMIT 10;
+''', conn)
+
+# Extraer el título de la película #1
+top_movie = top_score.iloc[0]['title']
+
+# Eliminar los últimos 6 caracteres
+top_movie = top_movie[:-6]
+
+fn.fetch_movie_poster(top_movie)
+top_score
+
+
+###         TOP 10 (PELÍCULAS MÁS VISTAS EN EL ÚLTIMO MES)
+### --------------------------------------------------------------------------------
+
+top_score = pd.read_sql('''
+            SELECT title, 
+            ROUND(AVG(movie_rating), 2) AS score,
+            COUNT(movie_id) AS views
+            FROM final_ratings
+            WHERE strftime('%Y-%M', datetime(timestamp, 'unixepoch')) = '2018-08'
+            GROUP BY title
+            HAVING score >= 4
+            ORDER BY views DESC
+            LIMIT 10;
+''', conn)
+
+# Extraer el título de la película #1
+top_movie = top_score.iloc[0]['title']
+
+# Eliminar los últimos 6 caracteres
+top_movie = top_movie[:-6]
+
+fn.fetch_movie_poster(top_movie)
+top_score
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ## MAS ADELANTE ------------------------------ KNN
