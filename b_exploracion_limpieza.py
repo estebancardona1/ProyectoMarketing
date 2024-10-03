@@ -343,3 +343,6 @@ final=pd.read_sql('select * from final_ratings',conn)
 final.duplicated().sum() ## al cruzar tablas a veces se duplican registros
 final.info()
 final.head(10)
+
+# Exportar los datos para su posterior uso
+final.to_csv('data/df_movies_processed.csv', index=False)

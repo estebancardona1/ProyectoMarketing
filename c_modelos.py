@@ -9,6 +9,7 @@ from ipywidgets import interact ## para análisis interactivo
 from sklearn import neighbors ### basado en contenido un solo producto consumido
 import joblib
 import a_funciones as fn
+from sklearn.neighbors import NearestNeighbors
 
 ###         CARGAR DATOS
 ### --------------------------------------------------------------------------------
@@ -167,6 +168,51 @@ df_final2 = pd.concat([df_final, genres_dummies], axis=1)
 # Eliminar la columna de genres
 df_final2.drop('genres', axis=1, inplace=True)
 df_final2.drop('timestamp', axis=1, inplace=True)
+
+
+
+# Cargar el dataframe preprocesado
+df_final2 = pd.read_csv('data/df_movies_processed.csv')
+
+
+#### Sistema de recomendación basado en contenido KNN un solo producto visto ########
+
+gen_dummies = df_final2.columns[5:]  
+movies_dum = df_final2[gen_dummies]
+
+# Entrenar el modelo KNN
+model = NearestNeighbors(n_neighbors=11, metric='euclidean')
+model.fit(movies_dum)
+
+# Para la recomendaciòn
+def MovieRecommender(movie_name):
+    movie_list_name = []
+    
+    # Extraer el índice de la película seleccionada
+    movie_id = df_final2[df_final2['title'] == movie_name].index
+    
+    if len(movie_id) == 0:
+        return f"No se encontró la película: {movie_name}"
+    
+    movie_id = movie_id[0]
+    
+    # Obtener las distancias y los índices de las películas más cercanas
+    distances, idlist = model.kneighbors(movies_dum.iloc[movie_id].values.reshape(1, -1))
+
+    # Para cada recomendación, agregar la película
+    for newid in idlist[0]:  
+        recommended_movie = df_final2.loc[newid, 'title']
+        if recommended_movie != movie_name:  # Evitar agregar la misma película
+            movie_list_name.append(recommended_movie)
+
+    # Eliminar duplicados
+    movie_list_name = list(set(movie_list_name))
+
+    return movie_list_name
+
+movie_titles = df_final2['title'].tolist()
+
+print(interact(MovieRecommender, movie_name=movie_titles))
 
 
 
