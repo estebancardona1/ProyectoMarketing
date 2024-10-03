@@ -1,65 +1,77 @@
-###### LIBRERIAS
+###         LIBRERIAS
+### --------------------------------------------------------------------------------
+
 import numpy as np
 import pandas as pd
 import sqlite3 as sql
-import plotly.graph_objs as go ### para gráficos
+import plotly.graph_objs as go 
 import plotly.express as px
 #from mlxtend.preprocessing import TransactionEncoder
 import a_funciones as fn
 
-# CARGAR DATOS
+###         CARGAR DATOS
+### --------------------------------------------------------------------------------
 
-conn=sql.connect('data\\db_movies') ### crear cuando no existe el nombre de cd  y para conectarse cuando sí existe.
-cur=conn.cursor() ###para funciones que ejecutan sql en base de datos
+# Crear cuando no existe el nombre de cd y para conectarse cuando sí existe.
+conn=sql.connect('data\\db_movies') 
+cur=conn.cursor() 
+# Para funciones que ejecutan sql en base de datos
 
 cur.execute('select name from sqlite_master where type = "table"')
 cur.fetchall()
 
-# NOMBRAR LAS TABLAS
+###         NOMBRAR LAS TABLAS
+### --------------------------------------------------------------------------------
 
 movies = pd.read_sql("SELECT * from movies", conn)
-movies # Se tiene una primera tabla *movies*, la cual contiene información 
-# sobre las películas (título, año de lanzamineto y los géneros asociados a la misma)
+movies # Base de datos películas (MovieID, título, géneros)
 
 ratings = pd.read_sql("SELECT * from ratings", conn)
-ratings # Se tiene también, una segunda tabla, llamada *ratings*, la cual contiene información asociada 
-# a las calificaciones que ha obtenido una película y la cantidad de usuarios que han calificado la película.
+ratings # Base de datos calificaciones (UserID, Movie ID, título, género)
 
-#VERIFICAR DUPLICADOS
+###         TRATAMIENTO DE DATOS
+### --------------------------------------------------------------------------------
+
+## ----- TÍTULOS DUPLICADOS
+
 dup_titles = pd.read_sql("""SELECT title, COUNT(*) as count
                          FROM movies
                          GROUP BY title
                          HAVING COUNT(*) > 1;""", conn)
+dup_titles # Se identifican algunos títulos duplicados (5)
 
-dup_titles
+## ----- SEPARAR EL AÑO EN UNA NUEVA VARIABLE
 
-#DUMMIZAR LOS GENEROS
+movies['year'] = movies['title'].str.extract(r'\((\d{4})\)')  # Extrae el año
+movies['title'] = movies['title'].str.replace(r'\s*\(\d{4}\)', '', regex=True)  # Elimina el año del título
 
-# Se procede a dummizar la columna de género, separando los carácteres contenidos en la misma.
-# Esta dummización se hace con el fin de poder analizar más fácilmente la base de datos
+## ----- SEPARAR LOS GÉNEROS EN COLUMNAS
 
 # Separar los géneros en columnas teniendo en cuenta el criterio de separación '|'
 genres_dummies = movies['genres'].str.get_dummies(sep='|')
 
 # Concatenar las columnas de géneros con el DataFrame original
 movies2 = pd.concat([movies, genres_dummies], axis=1)
-movies2
 
 # Renombrar la variable de 'no genres listed'
 movies2 = movies2.rename(columns={"(no genres listed)": "no_genre"})
-movies2
+
+# Eliminar la columna con los géneros unidos
+movies2 = movies2.drop(columns=['genres'])
 
 # Revisar las películas que no tienen género listado
 no_genre = movies2[movies2['no_genre']==1]
 no_genre
+
+#vis = movies2.sort_values(by='year', ascending=True)
+#print(movies[movies['movieId'] == 102747])
 
 # Distribución de los géneros
 genre_totals = movies2.iloc[:, 4:].sum().sort_values(ascending=False)
 genre_totals_df = genre_totals.reset_index() #Convertir a dataframe
 genre_totals_df.columns = ['Genre', 'Count']
 
-
-# Graficar los géneros ---------------------
+## ----- SEPARAR LOS GÉNEROS EN COLUMNAS
 
 # Crear el gráfico de barras
 fig = go.Figure()
@@ -68,12 +80,12 @@ fig = go.Figure()
 fig.add_trace(go.Bar(
     x=genre_totals_df['Genre'],
     y=genre_totals_df['Count'],
-    marker_color='indigo'  # Puedes cambiar el color si deseas
+    marker_color='springgreen'
 ))
 
 # Actualizar el diseño del gráfico
 fig.update_layout(
-    title='Total de Géneros de Películas',
+    title='Géneros de Películas',
     xaxis_title='Género',
     yaxis_title='Cantidad',
     xaxis_tickangle=-45,
@@ -83,11 +95,10 @@ fig.update_layout(
 # Mostrar el gráfico
 fig.show()
 
+###         VISUALIZACIÓN DE LOS DATOS
+### --------------------------------------------------------------------------------
 
-
-# VISUALIZACIÓN DE LOS DATOS
-
-# Calificaciones generales
+## ----- CALIFICACIONES GENERALES
 
 cr = pd.read_sql("""
     SELECT 
@@ -98,13 +109,10 @@ cr = pd.read_sql("""
     GROUP BY "rating"
     ORDER BY "rating"
 """, conn)
-
 cr
 
-
-# Visualización del conteo de calificaciones
-
 pd.read_sql("select count(*) from ratings", conn)
+# Se tiene un total de 100836 calificaciones
 
 # Definir los colores según las calificaciones
 colors = []
@@ -141,9 +149,8 @@ layout = go.Layout(
 fig = go.Figure(data=data, layout=layout)
 fig.show()
 
+## ----- CALIFICACIONES DE LOS USUARIOS
 
-
-# Calificaciones por usuario
 rating_users=pd.read_sql(''' SELECT "userId" as user_id,
                          count(*) as cnt_rat
                          FROM ratings
@@ -172,6 +179,7 @@ rating_users2
 # Histograma número de calificaciones por usuario 2
 
 fn.plot_histogram(rating_users2, 'cnt_rat', bins=20, color='#264653')
+
 
 #### verificar cuantas calificaciones tiene cada película
 
@@ -205,8 +213,9 @@ rating_movies2
 fn.plot_histogram(rating_movies2, 'cnt_rat', bins=20, color='#264653')
 
 
-# Separar las calificaciones por puntaje
+## ----- CALIFICACIONES DE LOS USUARIOS POR CADA CALIFICACIÓN
 
+# Separar las calificaciones por puntaje
 ratings_list = np.arange(0.5, 5.5, 0.5)
 
 # Contar cuántas veces calificó cada usuario
@@ -222,8 +231,7 @@ rating_counts = rating_counts.sort_values(by='Total', ascending=False)
 
 rating_counts
 
-
-# Crear la nueva matriz binaria
+# Crear una nueva matriz binaria
 binary_matrix = (rating_counts.iloc[:, :-1] >= 1).astype(int)
 
 # Calcular la columna Total en la matriz binaria
@@ -233,7 +241,6 @@ binary_matrix['Total'] = binary_matrix.sum(axis=1)
 binary_matrix
 
 #Convertir matriz a dataframe
-
 id_binary = binary_matrix.index.tolist()
 
 binary_total = binary_matrix['Total'].tolist()
@@ -274,10 +281,9 @@ fig.update_layout(
 # Mostrar el gráfico
 fig.show()
 
-
 # Visualización 2
 
-# Definir los bins manualmente
+# Definir los bins
 bins = [0, 2, 4, 6, 11]  # Bins para los rangos (1-2), (3-4), (5-6), (+6)
 labels = ['1-2', '3-4', '5-6', '+6']  # Etiquetas para los bins
 
@@ -308,8 +314,10 @@ fig.update_layout(
 # Mostrar el gráfico
 fig.show()
 
+########################################################################################
 
-### -------- PREPROCESAMIENTO -------------
+###         P R E R P O C E S A M I E N T O
+### --------------------------------------------------------------------------------
 
 fn.ejecutar_sql('preprocesamiento.sql', cur)
 
@@ -328,46 +336,10 @@ pd.read_sql('select count(*) from movies', conn)
 pd.read_sql('select count(*) from movies_sel', conn)
 
 
-## 3 tablas cruzadas ###
-pd.read_sql('select count(*) from ratings_final', conn)
+## tablas cruzadas ###
+pd.read_sql('select count(*) from final_ratings', conn)
 
-ratings=pd.read_sql('select * from ratings_final',conn)
-ratings.duplicated().sum() ## al cruzar tablas a veces se duplican registros
-ratings.info()
-ratings.head(10)
-
-df_final = pd.read_sql('select * from  ratings_final',conn)
-
-df_final.drop('movieId', axis=1, inplace=True)
-df_final.drop('movieId:1', axis=1, inplace=True)
-df_final.drop('cnt_rat', axis=1, inplace=True)
-
-df_final
-
-# Separar los géneros en columnas teniendo en cuenta el criterio de separación '|'
-genres_dummies = df_final['genres'].str.get_dummies(sep='|')
-
-# Concatenar las columnas de géneros con el DataFrame original
-df_final2 = pd.concat([df_final, genres_dummies], axis=1)
-
-# Paso 1: Extraer el año del título y crear la columna 'year'
-df_final2['year'] = df_final2['title'].str.extract(r'\((\d{4})\)')
-
-# Paso 2: Eliminar el año del título, dejando solo el nombre de la película
-df_final2['title'] = df_final2['title'].str.replace(r'\(\d{4}\)', '', regex=True).str.strip()
-
-# Paso 3: Reordenar las columnas para que 'year' quede al lado de 'title'
-cols = df_final2.columns.tolist()
-title_index = cols.index('title')
-cols.insert(title_index + 1, cols.pop(cols.index('year')))  # Mover 'year' al lado de 'title'
-df_final2 = df_final2[cols]
-
-df_final2.drop('genres', axis=1, inplace=True)
-
-#BASE DE DATOS FINAL
-df_final2.duplicated().sum() ## al cruzar tablas a veces se duplican registros
-df_final2.info()
-df_final2.head(10)
-
-# Exportar los datos para su posterior uso
-df_final2.to_csv('data/df_movies.csv', index=False)
+final=pd.read_sql('select * from final_ratings',conn)
+final.duplicated().sum() ## al cruzar tablas a veces se duplican registros
+final.info()
+final.head(10)

@@ -23,20 +23,6 @@ create table movies_sel as select movieId,
 
 -------crear tablas filtradas de películas, usuarios y calificaciones ----
 
-drop table if exists ratings_final;
-
-select a."userId" as user_id,
-a."movieId" as movie_id,
-a."rating" as movie_rating
-a."timestamp" as timestamp
-from ratings a
-inner join user_sel c
-on a."userId" =c.user_id;
-
-
-
---- SANTIAGO
-
 drop table if exists ratings_filtered;
 
 create table ratings_filtered as
@@ -60,14 +46,15 @@ movies_sel b on a.movieId = b.movieId;
 
 ---crear tabla completa ----
 
-drop table if exists ratings_final;
+drop table if exists final_ratings;
 
-create table ratings_final as
+create table final_ratings as
 select a.user_id,
        a.movie_id,
+       b.title,
        a.movie_rating,
-       a.timestamp,
-       b.*
+       b.genres,
+       a.timestamp    
 from ratings_filtered a
 inner join movies_final b
 on a.movie_id = b.movieId
