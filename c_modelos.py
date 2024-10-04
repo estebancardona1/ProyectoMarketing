@@ -132,22 +132,6 @@ top_score
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ## MAS ADELANTE ------------------------------ KNN
 
 df_final.drop('movieId', axis=1, inplace=True)
@@ -159,24 +143,20 @@ df_final['title'] = df_final['title'].str.replace(r'\s*\(\d{4}\)', '', regex=Tru
 
 ## ----- SEPARAR LOS GÉNEROS EN COLUMNAS
 
-# Separar los géneros en columnas teniendo en cuenta el criterio de separación '|'
+#--------- Separar los géneros en columnas teniendo en cuenta el criterio de separación '|'
 genres_dummies = df_final['genres'].str.get_dummies(sep='|')
 
 # Concatenar las columnas de géneros con el DataFrame original
 df_final2 = pd.concat([df_final, genres_dummies], axis=1)
 
-# Eliminar la columna de genres
-df_final2.drop('genres', axis=1, inplace=True)
-df_final2.drop('timestamp', axis=1, inplace=True)
+# Eliminar las columnas de 'genres' y 'timestamp'
+df_final2.drop(['genres', 'timestamp'], axis=1, inplace=True)
 
+#df_final2.columns
 
+####---- Sistema de recomendación basado en contenido KNN ########
 
-# Cargar el dataframe preprocesado
-df_final2 = pd.read_csv('data/df_movies_processed.csv')
-
-
-#### Sistema de recomendación basado en contenido KNN un solo producto visto ########
-
+# Verificar la posición de las columnas dummy (géneros)
 gen_dummies = df_final2.columns[5:]  
 movies_dum = df_final2[gen_dummies]
 
@@ -184,35 +164,36 @@ movies_dum = df_final2[gen_dummies]
 model = NearestNeighbors(n_neighbors=11, metric='euclidean')
 model.fit(movies_dum)
 
-# Para la recomendaciòn
+# Función para la recomendación
 def MovieRecommender(movie_name):
     movie_list_name = []
     
     # Extraer el índice de la película seleccionada
     movie_id = df_final2[df_final2['title'] == movie_name].index
     
+    # Verificar si se encontró la película
     if len(movie_id) == 0:
         return f"No se encontró la película: {movie_name}"
     
-    movie_id = movie_id[0]
-    
+    movie_id = movie_id[0]  
+
     # Obtener las distancias y los índices de las películas más cercanas
     distances, idlist = model.kneighbors(movies_dum.iloc[movie_id].values.reshape(1, -1))
 
-    # Para cada recomendación, agregar la película
-    for newid in idlist[0]:  
+    # Para cada recomendación, agregar la película si no es la misma seleccionada
+    for newid in idlist[0]:
         recommended_movie = df_final2.loc[newid, 'title']
-        if recommended_movie != movie_name:  # Evitar agregar la misma película
+        if recommended_movie != movie_name:  # Para evitar agregar la misma película
             movie_list_name.append(recommended_movie)
 
-    # Eliminar duplicados
+    # Eliminar duplicados de las recomendaciones
     movie_list_name = list(set(movie_list_name))
 
     return movie_list_name
 
 movie_titles = df_final2['title'].tolist()
 
+# Mostrar el sistema de recomendación interactivo
 print(interact(MovieRecommender, movie_name=movie_titles))
-
 
 

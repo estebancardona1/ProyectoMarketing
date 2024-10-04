@@ -345,4 +345,4 @@ final.info()
 final.head(10)
 
 # Exportar los datos para su posterior uso
-final.to_csv('data/df_movies_processed.csv', index=False)
+#final.to_csv('data/df_movies_processed.csv', index=False)
