@@ -50,6 +50,9 @@ df_final3 = pd.concat([df_final2, genres_dummies], axis=1)
 # Eliminar las columnas de 'genres' y 'timestamp'
 df_final3.drop(['genres'], axis=1, inplace=True)
 
+# Guardar el dataframe final
+joblib.dump(df_final3,"salidas\\df_final3.joblib")
+
 
 ####################################################################################
 ######################## 1. SISTEMAS BASADOS EN POPULARIDAD ########################
@@ -191,6 +194,14 @@ widgets.interactive(show_top_movies, selected_genre=genre_dropdown)
 # Verificar la posición de las columnas dummy (géneros)
 gen_dummies = df_final3.columns[5:]  
 movies_dum = df_final3[gen_dummies]
+
+# Datos para sistema de recomendación 3
+gen_dummies2 = df_final3.columns[4:]  
+movies_dum2 = df_final3[gen_dummies2]
+sc=MinMaxScaler()
+movies_dum2[["year"]]=sc.fit_transform(movies_dum2[['year']])
+
+joblib.dump(movies_dum2,"salidas\\movies_dum2.joblib")
 
 # Entrenar el modelo KNN
 model = NearestNeighbors(n_neighbors=11, metric='euclidean')
