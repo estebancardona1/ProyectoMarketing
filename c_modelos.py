@@ -12,7 +12,10 @@ from sklearn import neighbors ### basado en contenido un solo producto consumido
 import joblib
 import a_funciones as fn
 from sklearn.neighbors import NearestNeighbors
-
+import ipywidgets as widgets
+from IPython.display import display
+from prettytable import PrettyTable
+import re
 
 ###         CARGAR DATOS
 ### --------------------------------------------------------------------------------
@@ -119,12 +122,65 @@ top_d = pd.read_sql('''
             LIMIT 10''', conn)
 
 
-###         TOP 10 (PELÍCULAS MÁS VISTAS POR GÉNERO)
+###         SISTEMAS BASADOS EN POPULARIDAD
 ### --------------------------------------------------------------------------------
-import ipywidgets as widgets
-from IPython.display import display
-from prettytable import PrettyTable
 
+# Opciones para la lista desplegable principal
+options = ['Top 10 Mejores Calificadas Global', 
+           'Top 10 Más Vistas Global', 
+           'Top 10 Más Vistas Último Año', 
+           'Top 10 Mejores Calificadas Último Año']
+
+# Crear una lista desplegable para las opciones
+option_dropdown = widgets.Dropdown(
+    options=options,
+    description='Elige:',
+    value='Top 10 Mejores Calificadas Global'  # Valor por defecto
+)
+
+# Función para mostrar el top según la selección del usuario
+def show_top(selected_option):
+
+    if selected_option == 'Top 10 Mejores Calificadas Global': 
+        top_movie = top_a.iloc[0]['title']# Extraer el título de la película #1
+        top_movie = top_movie[:-6]# Eliminar los últimos 6 caracteres
+        print("EN EL TOP 1: ", top_movie)
+        fn.fetch_movie_poster(top_movie)
+        print("TOP 10 Mejores Calificadas Global")
+        print(top_a)
+    
+    elif selected_option == 'Top 10 Más Vistas Global':
+        top_movie = top_b.iloc[0]['title']# Extraer el título de la película #1
+        top_movie = top_movie[:-6]# Eliminar los últimos 6 caracteres
+        print("EN EL TOP 1: ", top_movie)
+        fn.fetch_movie_poster(top_movie)
+        print("TOP 10 Más Vistas Global")
+        print(top_b)
+    
+    elif selected_option == 'Top 10 Más Vistas Último Año':
+        top_movie = top_c.iloc[0]['title']# Extraer el título de la película #1
+        top_movie = top_movie[:-6]# Eliminar los últimos 6 caracteres
+        print("EN EL TOP 1: ", top_movie)
+        fn.fetch_movie_poster(top_movie)
+        print("TOP 10 Más Vistas Último Año")
+        print(top_c)
+    
+    else:
+        selected_option == 'Top 10 Mejores Calificadas Último Año'
+        top_movie = top_d.iloc[0]['title']# Extraer el título de la película #1
+        top_movie = top_movie[:-6]# Eliminar los últimos 6 caracteres
+        print("EN EL TOP 1: ", top_movie)
+        fn.fetch_movie_poster(top_movie)
+        print("TOP 10 Mejores Calificadas Último Año")
+        print(top_d)
+    
+    
+
+# Conectar la función al evento de cambio de selección
+widgets.interactive(show_top, selected_option=option_dropdown)
+
+###         TOP 10 (MEJORES PELÍCULAS POR GÉNERO)
+### --------------------------------------------------------------------------------
 
 # Obtener los géneros únicos
 genres = ['Action', 'Adventure', 'Animation', 'Children', 'Comedy', 'Drama', 
@@ -167,17 +223,7 @@ def show_top_movies(selected_genre):
     print("")
     print("Aquí un listado con las películas que te podrían interesar: ")
     print("")
-    
-    # Usar PrettyTable para alinear
-    table = PrettyTable()
-    table.field_names = ["Title", "Score", "Views"]
-    for index, row in top_movies.iterrows():
-        table.add_row([row['title'], row['score'], row['views']])
-
-    # Alinear a la derecha
-    table.align = "l"
-    print(table)
-
+    print(top_movies)
     print("")
     
 
@@ -185,67 +231,129 @@ def show_top_movies(selected_genre):
 widgets.interactive(show_top_movies, selected_genre=genre_dropdown)
 
 
-############################################################################################
-####### 2.1 Sistema de recomendación basado en contenido un solo producto - Manual #########
-############################################################################################
+####################################################################################
+######## 2. SISTEMA DE RECOMENDACIÓN BASADO EN CONTENIDO UN SOLO PRODUCTO ##########
+####################################################################################
 
-## ----- SISTEMA DE RECOMENDACIÓN BASADO EN CONTENIDO KNN
+movies = pd.read_sql('select * from movies_final', conn)
+movies = movies.drop(['movieId:1', 'cnt_rat'], axis=1)
 
-# Verificar la posición de las columnas dummy (géneros)
-gen_dummies = df_final3.columns[5:]  
-movies_dum = df_final3[gen_dummies]
+## ----- SEPARAR EL AÑO EN UNA NUEVA VARIABLE
 
-# Datos para sistema de recomendación 3
-gen_dummies2 = df_final3.columns[4:]  
-movies_dum2 = df_final3[gen_dummies2]
-sc=MinMaxScaler()
-movies_dum2[["year"]]=sc.fit_transform(movies_dum2[['year']])
+movies['year'] = movies['title'].str.extract(r'\((\d{4})\)')  # Extrae el año
+movies['title'] = movies['title'].str.replace(r'\s*\(\d{4}\)', '', regex=True)  # Elimina el año del título
 
-joblib.dump(movies_dum2,"salidas\\movies_dum2.joblib")
+## ----- SEPARAR LOS GÉNEROS EN COLUMNAS
 
-# Entrenar el modelo KNN
-model = NearestNeighbors(n_neighbors=11, metric='euclidean')
+# Separar los géneros en columnas teniendo en cuenta el criterio de separación '|'
+genres_dummies = movies['genres'].str.get_dummies(sep='|')
+
+# Concatenar las columnas de géneros con el DataFrame original
+movies2 = pd.concat([movies, genres_dummies], axis=1)
+
+## ----- ESCALAR EL AÑO PARA ESTAR EN EL MISMO RANGO
+sc = MinMaxScaler()
+movies2[["year_sc"]] = sc.fit_transform(movies2[["year"]])
+
+## ----- CORREGIR LOS TÍTULOS QUE ESTÁN MAL ESCRITOS
+
+def fix_titles(title):
+    # Usamos una expresión regular para identificar títulos como "Anaconda, The" o "Matrix, The"
+    pattern = r'(.+),\s(The|A|An)$'
+    match = re.match(pattern, title)
+    
+    # Si encontramos una coincidencia, reordenamos el título
+    if match:
+        new_title = f"{match.group(2)} {match.group(1)}"
+        return new_title
+    else:
+        return title
+    
+movies2['title'] = movies2['title'].apply(fix_titles)
+
+## ----- ELIMINAR LAS VARIABLES QUE NO SE VAN A USAR
+movies_dum = movies2.drop(columns=["movieId", "title", "genres", "year"]) 
+
+
+## ----- EXPORTAR LOS DATOS
+joblib.dump(movies_dum,"salidas\\movies_dum2.joblib")
+
+
+###         SISTEMA DE RECOMENDACIÓN BASADO EN CONTENIDO DE UN SOLO PRODUCTO
+### --------------------------------------------------------------------------------
+
+def recomendacion(Pelicula=sorted(list(movies2['title']))):
+    
+    # Obtener el índice de la película seleccionada
+    ind_movie = movies2[movies2['title'] == Pelicula].index.values.astype(int)[0]
+    
+    # Calcular la correlación entre la película seleccionada y todas las demás
+    similar_movies = movies_dum.corrwith(movies_dum.iloc[ind_movie, :], axis=1)
+    
+    # Ordenar las correlaciones de mayor a menor
+    similar_movies = similar_movies.sort_values(ascending=False)
+    
+    # Convertir en un DataFrame y redondear la correlación a 2 decimales
+    top_similar_movies = similar_movies.to_frame(name="correlación").round(3)
+    
+    # Eliminar la película seleccionada de las recomendaciones
+    top_similar_movies = top_similar_movies.drop(index=ind_movie)
+    
+    # Seleccionar las 10 mejores recomendaciones (sin la película original)
+    top_similar_movies = top_similar_movies.iloc[0:10, :]
+    
+    # Agregar los títulos de las películas correspondientes a los índices
+    top_similar_movies['title'] = movies2.loc[top_similar_movies.index, 'title']
+    
+    # Obtener el título de la primera película recomendada
+    first_recommended_movie = top_similar_movies.iloc[0]['title']
+    
+    print("Si viste ", Pelicula, " te recomendamos ", first_recommended_movie)
+    fn.fetch_movie_poster(first_recommended_movie)
+    print("Además algunos títulos adicionales que te podrían gustar: ")
+    
+    return top_similar_movies
+
+# Interactuar con la función de recomendación
+print(interact(recomendacion))
+
+
+###         SISTEMA DE RECOMENDACIÓN BASADO EN CONTENIDO KNN
+### --------------------------------------------------------------------------------
+
+## el coseno de un angulo entre dos vectores es 1 cuando son perpendiculares y 0 cuando son paralelos(indicando que son muy similar324e-06	3.336112e-01	3.336665e-01	3.336665e-es)
+model = neighbors.NearestNeighbors(n_neighbors=11, metric='cosine')
 model.fit(movies_dum)
+dist, idlist = model.kneighbors(movies_dum)
 
-def MovieRecommender(movie_name):
+distancias=pd.DataFrame(dist) ## devuelve un ranking de la distancias más cercanas para cada fila(libro)
+id_list=pd.DataFrame(idlist) ## para saber esas distancias a que item corresponde
+
+
+def MovieRecommender(movie_name=sorted(list(movies2['title'].value_counts().index))):
     movie_list_name = []
     
-    # Extraer el índice de la película seleccionada
-    movie_id = df_final2[df_final3['title'] == movie_name].index
+    # Obtener el índice de la película seleccionada
+    movie_id = movies2[movies2['title'] == movie_name].index
+    movie_id = movie_id[0]
     
-    # Verificar si se encontró la película
-    if len(movie_id) == 0:
-        return f"No se encontró la película: {movie_name}"
+    # Recopilar los nombres de las películas recomendadas
+    for newid in idlist[movie_id]:
+        movie_list_name.append(movies2.loc[newid].title)
+
+    # Filtrar para eliminar la película seleccionada de las recomendaciones
+    movie_list_name = [name for name in movie_list_name if name != movie_name]
     
-    movie_id = movie_id[0]  
-
-    # Obtener las distancias y los índices de las películas más cercanas
-    distances, idlist = model.kneighbors(movies_dum.iloc[movie_id].values.reshape(1, -1))
-
-    # Para cada recomendación, agregar la película si no es la misma seleccionada
-    for newid in idlist[0]:
-        recommended_movie = df_final3.loc[newid, 'title']
-        if recommended_movie != movie_name:  # Para evitar agregar la misma película
-            movie_list_name.append(recommended_movie)
-
-    # Eliminar duplicados de las recomendaciones
-    movie_list_name = list(set(movie_list_name))
+    # Obtener el nombre de la primera recomendación
+    first_recommendation = movie_list_name[0]
+    
+    print("Si viste ", movie_name, " te recomendamos ", first_recommendation)
+    fn.fetch_movie_poster(first_recommendation)
+    print("Además algunos títulos adicionales que te podrían gustar: ")
 
     return movie_list_name
 
-movie_titles = sorted(df_final3['title'].unique())
-
-# Mostrar el sistema de recomendación interactivo
-print(interact(MovieRecommender, movie_name=movie_titles))
+print(interact(MovieRecommender))
 
 
 
-
-
-# Extraer el título de la película #1
-top_movie = top_a.iloc[0]['title']
-
-# Eliminar los últimos 6 caracteres
-top_movie = top_movie[:-6]
-
-poster = fn.fetch_movie_poster(top_movie)
