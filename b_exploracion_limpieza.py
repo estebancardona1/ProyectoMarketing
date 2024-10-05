@@ -105,9 +105,9 @@ cr = pd.read_sql("""
         "rating" AS rating,
         COUNT(*) AS conteo,
         (COUNT(*) * 100.0 / SUM(COUNT(*)) OVER ()) AS porcentaje
-    FROM ratings
-    GROUP BY "rating"
-    ORDER BY "rating"
+        FROM ratings
+        GROUP BY "rating"
+        ORDER BY "rating"
 """, conn)
 cr
 

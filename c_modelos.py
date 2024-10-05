@@ -5,6 +5,8 @@ import numpy as np
 import pandas as pd
 import sqlite3 as sql
 from sklearn.preprocessing import MinMaxScaler
+import matplotlib.pyplot as plt
+import seaborn as sns
 from ipywidgets import interact ## para análisis interactivo
 from sklearn import neighbors ### basado en contenido un solo producto consumido
 import joblib
@@ -34,6 +36,7 @@ df_final2 = pd.read_sql('''SELECT user_id, movie_id, title,
 ######################## 1. SISTEMAS BASADOS EN POPULARIDAD ########################
 ####################################################################################
 
+
 ###         TOP 10 (PELÍCULAS MEJORES CALIFICADAS)
 ### --------------------------------------------------------------------------------
 
@@ -53,8 +56,7 @@ top_movie = top_score.iloc[0]['title']
 # Eliminar los últimos 6 caracteres
 top_movie = top_movie[:-6]
 
-fn.fetch_movie_poster(top_movie)
-top_score
+poster = fn.fetch_movie_poster(top_movie)
 
 
 ###         TOP 10 (PELÍCULAS MÁS VISTAS)
@@ -81,6 +83,8 @@ top_score
 
 ###         TOP 10 (PELÍCULAS MÁS VISTAS EN EL ÚLTIMO AÑO)
 ### --------------------------------------------------------------------------------
+
+
 
 top_score = pd.read_sql('''
             SELECT title, 
@@ -191,3 +195,8 @@ movie_titles = sorted(df_final3['title'].unique())
 
 # Mostrar el sistema de recomendación interactivo
 print(interact(MovieRecommender, movie_name=movie_titles))
+
+
+
+
+
