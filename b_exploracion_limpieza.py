@@ -6,8 +6,8 @@ import pandas as pd
 import sqlite3 as sql
 import plotly.graph_objs as go 
 import plotly.express as px
-#from mlxtend.preprocessing import TransactionEncoder
 import a_funciones as fn
+from IPython.display import display
 
 ###         CARGAR DATOS
 ### --------------------------------------------------------------------------------
@@ -15,8 +15,8 @@ import a_funciones as fn
 # Crear cuando no existe el nombre de cd y para conectarse cuando sí existe.
 conn=sql.connect('data\\db_movies') 
 cur=conn.cursor() 
-# Para funciones que ejecutan sql en base de datos
 
+# Para funciones que ejecutan sql en base de datos.
 cur.execute('select name from sqlite_master where type = "table"')
 cur.fetchall()
 
@@ -24,10 +24,10 @@ cur.fetchall()
 ### --------------------------------------------------------------------------------
 
 movies = pd.read_sql("SELECT * from movies", conn)
-movies # Base de datos películas (MovieID, título, géneros)
+display(movies) # Base de datos películas (MovieID, título, géneros)
 
 ratings = pd.read_sql("SELECT * from ratings", conn)
-ratings # Base de datos calificaciones (UserID, Movie ID, título, género)
+display(ratings) # Base de datos calificaciones (UserID, Movie ID, título, género)
 
 ###         TRATAMIENTO DE DATOS
 ### --------------------------------------------------------------------------------
@@ -61,31 +61,31 @@ movies2 = movies2.drop(columns=['genres'])
 
 # Revisar las películas que no tienen género listado
 no_genre = movies2[movies2['no_genre']==1]
-no_genre
-
-#vis = movies2.sort_values(by='year', ascending=True)
-#print(movies[movies['movieId'] == 102747])
 
 # Distribución de los géneros
 genre_totals = movies2.iloc[:, 4:].sum().sort_values(ascending=False)
 genre_totals_df = genre_totals.reset_index() #Convertir a dataframe
 genre_totals_df.columns = ['Genre', 'Count']
 
-## ----- SEPARAR LOS GÉNEROS EN COLUMNAS
+## ----- GRÁFICO DE LOS GÉNEROS
 
-# Crear el gráfico de barras
 fig = go.Figure()
 
 # Agregar datos al gráfico
 fig.add_trace(go.Bar(
     x=genre_totals_df['Genre'],
     y=genre_totals_df['Count'],
-    marker_color='springgreen'
+    marker_color='yellowgreen'
 ))
 
-# Actualizar el diseño del gráfico
+# Actualizar el diseño del gráfico con el título alineado y en una fuente de negrilla
 fig.update_layout(
-    title='Géneros de Películas',
+    title={
+        'text': 'Géneros de Películas',
+        'x': 0.5,  # Centrar el título
+        'xanchor': 'center',
+        'font': {'size': 20, 'family': 'Poppins Medium'}  # Negrilla con Arial Black
+    },
     xaxis_title='Género',
     yaxis_title='Cantidad',
     xaxis_tickangle=-45,
@@ -109,7 +109,6 @@ cr = pd.read_sql("""
         GROUP BY "rating"
         ORDER BY "rating"
 """, conn)
-cr
 
 pd.read_sql("select count(*) from ratings", conn)
 # Se tiene un total de 100836 calificaciones
@@ -126,7 +125,8 @@ for rating in cr['rating']:
     elif 4 <= rating <= 5:
         colors.append('#009fb7')  
 
-data  = go.Bar( x=cr.rating,y=cr.conteo, text=cr.conteo, textposition="outside", marker_color=colors)
+data  = go.Bar( x=cr.rating,y=cr.conteo, text=cr.conteo, 
+               textposition="outside", marker_color=colors)
 
 layout = go.Layout(
     title={
@@ -134,7 +134,8 @@ layout = go.Layout(
         'y': 0.94,
         'x': 0.5, 
         'xanchor': 'center',  # Anclar el título al centro
-        'yanchor': 'top'
+        'yanchor': 'top',
+        'font': {'size': 20, 'family': 'Poppins Medium'}
     },
     xaxis={
         'title': 'Calificación',
@@ -162,7 +163,7 @@ rating_users
 
 # Histograma número de calificaciones por usuario 
 
-fn.plot_histogram(rating_users, 'cnt_rat', bins=20, color='#264653')
+fn.plot_histogram(rating_users, 'cnt_rat', bins=20, color='yellowgreen')
 
 # Filtro de cantidad de ratings
 
@@ -178,7 +179,7 @@ rating_users2
 
 # Histograma número de calificaciones por usuario 2
 
-fn.plot_histogram(rating_users2, 'cnt_rat', bins=20, color='#264653')
+fn.plot_histogram(rating_users2, 'cnt_rat', bins=20, color='yellowgreen')
 
 
 #### verificar cuantas calificaciones tiene cada película
@@ -194,7 +195,7 @@ rating_movies
 
 # Histograma número de calificaciones por película
 
-fn.plot_histogram(rating_movies, 'cnt_rat', bins=20, color='#264653')
+fn.plot_histogram(rating_movies, 'cnt_rat', bins=20, color='yellowgreen')
 
 # Filtro de cantidad de ratings por película
 
@@ -210,7 +211,7 @@ rating_movies2
 
 # Histograma número de calificaciones por película 2
 
-fn.plot_histogram(rating_movies2, 'cnt_rat', bins=20, color='#264653')
+fn.plot_histogram(rating_movies2, 'cnt_rat', bins=20, color='yellowgreen')
 
 
 ## ----- CALIFICACIONES DE LOS USUARIOS POR CADA CALIFICACIÓN
@@ -229,7 +230,9 @@ rating_counts['Total'] = rating_counts.sum(axis=1)
 
 rating_counts = rating_counts.sort_values(by='Total', ascending=False)
 
-rating_counts
+print("Distribución de las calificaciones por usuario: ")
+print("")
+display(rating_counts)
 
 # Crear una nueva matriz binaria
 binary_matrix = (rating_counts.iloc[:, :-1] >= 1).astype(int)
@@ -238,7 +241,9 @@ binary_matrix = (rating_counts.iloc[:, :-1] >= 1).astype(int)
 binary_matrix['Total'] = binary_matrix.sum(axis=1)
 
 # Mostrar la nueva matriz con Total
-binary_matrix
+print("Matriz binaria de la distribucion de las calificaciones: ")
+print("")
+display(binary_matrix)
 
 #Convertir matriz a dataframe
 id_binary = binary_matrix.index.tolist()
@@ -248,8 +253,8 @@ binary_total = binary_matrix['Total'].tolist()
 # Unión de ID con Total
 df_binary = pd.DataFrame()
 df_binary['userId'] = id_binary
-df_binary['Total_ranges'] = binary_total
-df_binary
+df_binary['Range'] = binary_total
+display(df_binary)
 
 # Pegar total de 'df_binary' en 'rating_counts' según 'userId'
 df_merged_ratings = pd.merge(rating_counts,df_binary, on=['userId'], how='outer')
@@ -266,13 +271,20 @@ fig = go.Figure()
 fig.add_trace(go.Bar(
     x=total_counts.index,  # Total de calificaciones
     y=total_counts.values,  # Número de usuarios
-    marker=dict(color='#264653')
+    marker=dict(color='yellowgreen')
 ))
 
 # Personalizar el diseño del gráfico
 fig.update_layout(
-    title='Cantidad de Usuarios por Total de Calificaciones',
-    xaxis_title='Total de Calificaciones',
+    title={
+        'text': "Distribución en los rangos de calificaciones",
+        'y': 0.94,
+        'x': 0.5, 
+        'xanchor': 'center',  # Anclar el título al centro
+        'yanchor': 'top',
+        'font': {'size': 20, 'family': 'Poppins Medium'}
+    },
+    xaxis_title='Distribución de los rangos',
     yaxis_title='Número de Usuarios',
     width=800,
     height=600,
@@ -299,12 +311,19 @@ fig = go.Figure()
 fig.add_trace(go.Bar(
     x=binned_counts.index,  # Total de calificaciones en bins
     y=binned_counts.values,  # Número de usuarios en cada bin
-    marker=dict(color='#264653')
+    marker=dict(color='yellowgreen')
 ))
 
 # Personalizar el diseño del gráfico
 fig.update_layout(
-    title='Cantidad de Usuarios por Total de Calificaciones (Binned)',
+    title={
+        'text': "Distribución en los rangos de calificaciones (Agrupado)",
+        'y': 0.94,
+        'x': 0.5, 
+        'xanchor': 'center',  # Anclar el título al centro
+        'yanchor': 'top',
+        'font': {'size': 20, 'family': 'Poppins Medium'}
+    },
     xaxis_title='Total de Calificaciones (bins)',
     yaxis_title='Número de Usuarios',
     width=800,
@@ -342,6 +361,3 @@ final=pd.read_sql('select * from final_ratings',conn)
 final.duplicated().sum() ## al cruzar tablas a veces se duplican registros
 final.info()
 final.head(10)
-
-# Exportar los datos para su posterior uso
-#final.to_csv('data/df_movies_processed.csv', index=False)

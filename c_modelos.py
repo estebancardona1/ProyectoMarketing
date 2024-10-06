@@ -14,7 +14,6 @@ import a_funciones as fn
 from sklearn.neighbors import NearestNeighbors
 import ipywidgets as widgets
 from IPython.display import display
-from prettytable import PrettyTable
 import re
 
 ###         CARGAR DATOS
@@ -53,8 +52,27 @@ df_final3 = pd.concat([df_final2, genres_dummies], axis=1)
 # Eliminar las columnas de 'genres' y 'timestamp'
 df_final3.drop(['genres'], axis=1, inplace=True)
 
+## ----- CORREGIR LOS TÍTULOS QUE ESTÁN MAL ESCRITOS
+def fix_titles(title):
+    # Usamos una expresión regular para identificar títulos como "Anaconda, The" o "Matrix, The"
+    pattern = r'(.+),\s(The|A|An)$'
+    match = re.match(pattern, title)
+    
+    # Si encontramos una coincidencia, reordenamos el título
+    if match:
+        new_title = f"{match.group(2)} {match.group(1)}"
+        return new_title
+    else:
+        return title
+
+df_final3['title'] = df_final3['title'].apply(fix_titles)
+
+df_complete = df_final3
+
+display(df_complete)
+
 # Guardar el dataframe final
-joblib.dump(df_final3,"salidas\\df_final3.joblib")
+joblib.dump(df_final3,"salidas\\df_complete.joblib")
 
 
 ####################################################################################
@@ -145,37 +163,35 @@ def show_top(selected_option):
         top_movie = top_a.iloc[0]['title']# Extraer el título de la película #1
         top_movie = top_movie[:-6]# Eliminar los últimos 6 caracteres
         print("EN EL TOP 1: ", top_movie)
-        fn.fetch_movie_poster(top_movie)
+        fn.post_img(top_movie)
         print("TOP 10 Mejores Calificadas Global")
-        print(top_a)
+        display(top_a)
     
     elif selected_option == 'Top 10 Más Vistas Global':
         top_movie = top_b.iloc[0]['title']# Extraer el título de la película #1
         top_movie = top_movie[:-6]# Eliminar los últimos 6 caracteres
         print("EN EL TOP 1: ", top_movie)
-        fn.fetch_movie_poster(top_movie)
+        fn.post_img(top_movie)
         print("TOP 10 Más Vistas Global")
-        print(top_b)
+        display(top_b)
     
     elif selected_option == 'Top 10 Más Vistas Último Año':
         top_movie = top_c.iloc[0]['title']# Extraer el título de la película #1
         top_movie = top_movie[:-6]# Eliminar los últimos 6 caracteres
         print("EN EL TOP 1: ", top_movie)
-        fn.fetch_movie_poster(top_movie)
+        fn.post_img(top_movie)
         print("TOP 10 Más Vistas Último Año")
-        print(top_c)
+        display(top_c)
     
     else:
         selected_option == 'Top 10 Mejores Calificadas Último Año'
         top_movie = top_d.iloc[0]['title']# Extraer el título de la película #1
         top_movie = top_movie[:-6]# Eliminar los últimos 6 caracteres
         print("EN EL TOP 1: ", top_movie)
-        fn.fetch_movie_poster(top_movie)
+        fn.post_img(top_movie)
         print("TOP 10 Mejores Calificadas Último Año")
-        print(top_d)
+        display(top_d)
     
-    
-
 # Conectar la función al evento de cambio de selección
 widgets.interactive(show_top, selected_option=option_dropdown)
 
@@ -190,42 +206,41 @@ genres = ['Action', 'Adventure', 'Animation', 'Children', 'Comedy', 'Drama',
 # Crear un widget de lista desplegable
 genre_dropdown = widgets.Dropdown(
     options=genres,
-    description='Select Genre:',
-    value='Action'  # Género por defecto
+    description='Elige un género:',
+    value='Western'  # Género por defecto
 )
 
 def show_top_movies(selected_genre):
     # Filtrar las películas según el género seleccionado
-    genre_movies = df_final3[df_final3[selected_genre] == 1]
+    genre_movies = df_complete[df_complete[selected_genre] == 1]
 
-    # Agrupar por título y calcular el promedio de las calificaciones y el conteo de vistas
-    top_movies = genre_movies.groupby('title').agg(
+    # Agrupar por título, año y calcular el promedio de las calificaciones y el conteo de vistas
+    top_movies = genre_movies.groupby(['title', 'year']).agg(
         score=('movie_rating', 'mean'),  # Promedio de ratings
-        views=('movie_rating', 'count')   # Contar el número de calificaciones
+        views=('movie_rating', 'count')  # Contar el número de calificaciones
     ).reset_index()
 
-    # Renombrar la columna del promedio
-    top_movies['score'] = top_movies['score'].round(2)  # Redondear a 2 decimales
+    # Redondear el promedio de calificaciones a 2 decimales
+    top_movies['score'] = top_movies['score'].round(2)
 
     # Filtrar por score mayor o igual a 4
     top_movies = top_movies[top_movies['score'] >= 4]
 
-    # Ordenar por la puntuación en orden descendente y obtener las 10 mejores
+    # Ordenar por la cantidad de vistas en orden descendente y obtener las 10 mejores
     top_movies = top_movies.sort_values(by='views', ascending=False).head(10)
 
     # Mostrar el resultado
     # Extraer el título de la película #1
     top_movie = top_movies.iloc[0]['title']
 
-    fn.fetch_movie_poster(top_movie)
-
     print("La película número 1 es: ", top_movie)
-    print("")
+    fn.post_img(top_movie)  # Mostrar el póster de la película #1
     print("Aquí un listado con las películas que te podrían interesar: ")
     print("")
-    print(top_movies)
-    print("")
     
+    # Mostrar el DataFrame con el año
+    display(top_movies[['title', 'year', 'score', 'views']])
+    print("")
 
 # Conectar la función al evento de cambio de selección
 widgets.interactive(show_top_movies, selected_genre=genre_dropdown)
@@ -249,31 +264,19 @@ movies['title'] = movies['title'].str.replace(r'\s*\(\d{4}\)', '', regex=True)  
 genres_dummies = movies['genres'].str.get_dummies(sep='|')
 
 # Concatenar las columnas de géneros con el DataFrame original
-movies2 = pd.concat([movies, genres_dummies], axis=1)
+movies_sep = pd.concat([movies, genres_dummies], axis=1)
+
+movies_sep['title'] = movies_sep['title'].apply(fix_titles)
+
+## ----- EXPORTAR LOS DATOS
+joblib.dump(movies_sep,"salidas\\movies_final.joblib")
 
 ## ----- ESCALAR EL AÑO PARA ESTAR EN EL MISMO RANGO
 sc = MinMaxScaler()
-movies2[["year_sc"]] = sc.fit_transform(movies2[["year"]])
-
-## ----- CORREGIR LOS TÍTULOS QUE ESTÁN MAL ESCRITOS
-
-def fix_titles(title):
-    # Usamos una expresión regular para identificar títulos como "Anaconda, The" o "Matrix, The"
-    pattern = r'(.+),\s(The|A|An)$'
-    match = re.match(pattern, title)
-    
-    # Si encontramos una coincidencia, reordenamos el título
-    if match:
-        new_title = f"{match.group(2)} {match.group(1)}"
-        return new_title
-    else:
-        return title
-    
-movies2['title'] = movies2['title'].apply(fix_titles)
+movies_sep[["year_sc"]] = sc.fit_transform(movies_sep[["year"]])
 
 ## ----- ELIMINAR LAS VARIABLES QUE NO SE VAN A USAR
-movies_dum = movies2.drop(columns=["movieId", "title", "genres", "year"]) 
-
+movies_dum = movies_sep.drop(columns=["movieId", "title", "genres", "year"]) 
 
 ## ----- EXPORTAR LOS DATOS
 joblib.dump(movies_dum,"salidas\\movies_dum2.joblib")
@@ -282,10 +285,10 @@ joblib.dump(movies_dum,"salidas\\movies_dum2.joblib")
 ###         SISTEMA DE RECOMENDACIÓN BASADO EN CONTENIDO DE UN SOLO PRODUCTO
 ### --------------------------------------------------------------------------------
 
-def recomendacion(Pelicula=sorted(list(movies2['title']))):
+def recomendacion(movie=sorted(list(movies_sep['title']))):
     
     # Obtener el índice de la película seleccionada
-    ind_movie = movies2[movies2['title'] == Pelicula].index.values.astype(int)[0]
+    ind_movie = movies_sep[movies_sep['title'] == movie].index.values.astype(int)[0]
     
     # Calcular la correlación entre la película seleccionada y todas las demás
     similar_movies = movies_dum.corrwith(movies_dum.iloc[ind_movie, :], axis=1)
@@ -302,17 +305,18 @@ def recomendacion(Pelicula=sorted(list(movies2['title']))):
     # Seleccionar las 10 mejores recomendaciones (sin la película original)
     top_similar_movies = top_similar_movies.iloc[0:10, :]
     
-    # Agregar los títulos de las películas correspondientes a los índices
-    top_similar_movies['title'] = movies2.loc[top_similar_movies.index, 'title']
+    # Agregar los títulos y el año de las películas correspondientes a los índices
+    top_similar_movies['title'] = movies_sep.loc[top_similar_movies.index, 'title']
+    top_similar_movies['year'] = movies_sep.loc[top_similar_movies.index, 'year']
     
     # Obtener el título de la primera película recomendada
-    first_recommended_movie = top_similar_movies.iloc[0]['title']
+    top_movie = top_similar_movies.iloc[0]['title']
     
-    print("Si viste ", Pelicula, " te recomendamos ", first_recommended_movie)
-    fn.fetch_movie_poster(first_recommended_movie)
+    print("Si viste ", movie, " te recomendamos ", top_movie)
+    fn.post_img(top_movie)
     print("Además algunos títulos adicionales que te podrían gustar: ")
     
-    return top_similar_movies
+    return top_similar_movies[['title', 'year', 'correlación']]
 
 # Interactuar con la función de recomendación
 print(interact(recomendacion))
@@ -329,31 +333,36 @@ dist, idlist = model.kneighbors(movies_dum)
 distancias=pd.DataFrame(dist) ## devuelve un ranking de la distancias más cercanas para cada fila(libro)
 id_list=pd.DataFrame(idlist) ## para saber esas distancias a que item corresponde
 
-
-def MovieRecommender(movie_name=sorted(list(movies2['title'].value_counts().index))):
-    movie_list_name = []
+def MovieRecommender(movie=sorted(list(movies_sep['title'].value_counts().index))):
+    movie_list = []  # Lista para almacenar nombres de películas recomendadas, años y sus distancias
     
     # Obtener el índice de la película seleccionada
-    movie_id = movies2[movies2['title'] == movie_name].index
+    movie_id = movies_sep[movies_sep['title'] == movie].index
     movie_id = movie_id[0]
     
-    # Recopilar los nombres de las películas recomendadas
-    for newid in idlist[movie_id]:
-        movie_list_name.append(movies2.loc[newid].title)
-
-    # Filtrar para eliminar la película seleccionada de las recomendaciones
-    movie_list_name = [name for name in movie_list_name if name != movie_name]
+    # Recopilar los nombres de las películas recomendadas, años y las distancias
+    for i, newid in enumerate(idlist[movie_id]):
+        movie_name = movies_sep.loc[newid].title
+        movie_year = movies_sep.loc[newid].year  # Obtener el año de la película
+        distance = dist[movie_id][i]
+        if movie_name != movie:  # Evitar recomendar la misma película seleccionada
+            movie_list.append((movie_name, movie_year, distance))
     
-    # Obtener el nombre de la primera recomendación
-    first_recommendation = movie_list_name[0]
+    # Convertir la lista de recomendaciones a un DataFrame
+    movie_recommendations_df = pd.DataFrame(movie_list, columns=['Movie', 'Year', 'Distance'])
     
-    print("Si viste ", movie_name, " te recomendamos ", first_recommendation)
-    fn.fetch_movie_poster(first_recommendation)
-    print("Además algunos títulos adicionales que te podrían gustar: ")
+    # Ordenar las recomendaciones por las distancias más cercanas
+    movie_recommendations_df = movie_recommendations_df.sort_values(by='Distance', ascending=True).reset_index(drop=True)
+    
+    # Obtener la primera recomendación
+    top_movie = movie_recommendations_df.iloc[0]['Movie']
+    
+    print(f"Si viste '{movie}', te recomendamos '{top_movie}'.")
+    fn.post_img(top_movie)  # Mostrar la imagen del póster de la película recomendada
+    print("Además, algunos títulos adicionales que te podrían gustar:")
+    
+    # Mostrar el DataFrame de las películas recomendadas con el año
+    display(movie_recommendations_df)
 
-    return movie_list_name
-
+# Interactuar con la función
 print(interact(MovieRecommender))
-
-
-
