@@ -4,33 +4,23 @@ def ejecutar_sql (nombre_archivo, cur):
     sql_file.close
     cur.executescript(sql_as_string)
     
-def plot_histogram(dataframe, count_column, bins=20, color='#264653'):
-    
-    import plotly.graph_objs as go
-
-    # Graficar la distribución
-    fig = go.Figure()
-
-    fig.add_trace(go.Histogram(
-        x=dataframe[count_column],
-        nbinsx=bins,
-        marker=dict(color=color),
-        opacity=0.75
-    ))
+def plot_histogram(dataframe, count_column, title='Histograma', xlabel='Número de calificaciones', bins=20, color=("#532D87")):
+    import matplotlib.pyplot as plt
+    # Crear el gráfico de histograma
+    plt.figure(figsize=(10, 6))
+    plt.hist(dataframe[count_column], bins=bins, color=color)
 
     # Personalizar el diseño del gráfico
-    fig.update_layout(
-        
-        title='Histograma de número de calificaciones por usuario',
-        xaxis_title='Número de calificaciones',
-        yaxis_title='Frecuencia',
-        #bargap=0.2,
-        width=800,   
-        height=600   
-    )
-
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel('Frecuencia')
+    plt.grid(axis='y', alpha=0.75)
+    
+    # Ajustar el tamaño
+    plt.tight_layout()
+    
     # Mostrar el gráfico
-    fig.show()
+    plt.show()
     
 #BUSCAR IMAGEN
 
@@ -91,4 +81,3 @@ def post_img(movie_title):
         # Si no se encuentra, intentar con el formato '%20'
         if not search_and_fetch_poster("%20"):
             print(f"No se encontraron resultados para {movie_title}.")
-        
