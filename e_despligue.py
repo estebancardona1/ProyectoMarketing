@@ -16,7 +16,7 @@ def preprocesar():
     fn.ejecutar_sql('C:\\Users\\juane\\OneDrive\\Escritorio\\A\\Universidad UdeA\\ANALITICA III\\ProyectoMarketing\\b_preprocesamiento.sql', cur)
 
     # Cargar datos
-    movies = pd.read_sql('select * from movies', conn)
+    movies = pd.read_sql('select * from movies_final', conn)
     ratings = pd.read_sql('select * from ratings', conn)
 
     # Preprocesamiento de películas
@@ -41,7 +41,7 @@ def preprocesar():
     movies_dum = movies_sep.drop(columns=["movieId", "title", "genres", "year"])
 
     # Guardar datos preprocesados
-    joblib.dump(movies_sep, "salidas/movies_only.joblib")
+    joblib.dump(movies_sep, "salidas/movies_only.joblib") 
     joblib.dump(movies_dum, "salidas/movies_dum.joblib")
 
     return ratings, movies_sep, conn, cur
@@ -59,8 +59,8 @@ def recomendar_peliculas(user_id):
     l_movies_r = ratings['movieId'].to_numpy()
     
     # Separar películas calificadas y no calificadas por el usuario
-    movies_r = movies_dum[movies_dum.index.isin(l_movies_r)]
-    movies_nr = movies_dum[~movies_dum.index.isin(l_movies_r)]
+    movies_r = movies_dum[movies_dum.index.isin(l_movies_r)] #recomendadas
+    movies_nr = movies_dum[~movies_dum.index.isin(l_movies_r)]#no recomendadas
     
     if movies_r.empty:
         conn.close()

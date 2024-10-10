@@ -241,7 +241,6 @@ widgets.interactive(show_top_movies, selected_genre=genre_dropdown)
 ####################################################################################
 
 movies = pd.read_sql('select * from movies_final', conn)
-
 ## ----- SEPARAR LOS GÉNEROS EN COLUMNAS
 
 # Separar los géneros en columnas teniendo en cuenta el criterio de separación '|'
