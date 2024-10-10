@@ -9,6 +9,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 def preprocesar():
     # Conectar base de datos
+    
     conn = sql.connect('C:\\Users\\juane\\OneDrive\\Escritorio\\A\\Universidad UdeA\\ANALITICA III\\ProyectoMarketing\\data\\db_movies')
     cur = conn.cursor()
 
@@ -16,8 +17,8 @@ def preprocesar():
     fn.ejecutar_sql('C:\\Users\\juane\\OneDrive\\Escritorio\\A\\Universidad UdeA\\ANALITICA III\\ProyectoMarketing\\b_preprocesamiento.sql', cur)
 
     # Cargar datos
-    movies = pd.read_sql('select * from movies_final', conn)
-    ratings = pd.read_sql('select * from ratings', conn)
+    movies = pd.read_sql('select * from db_movies', conn)
+    ratings = pd.read_sql('select * from db_ratings', conn)
 
     # Preprocesamiento de películas
     movies['year'] = movies['title'].str.extract(r'\((\d{4})\)')
@@ -106,4 +107,3 @@ if __name__ == "__main__":
 
 import sys
 print(sys.executable)
-
