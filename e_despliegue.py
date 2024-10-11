@@ -20,10 +20,10 @@ from sklearn import neighbors
 def preprocesar():
 
     #### conectar_base_de_Datos#################
-    conn=sql.connect('D:\\Desktop\\Universidad\\2024-2\\Analítica\\Repositorios\\ProyectoMarketing\\data\\db_movies')
+    conn=sql.connect('data\\db_movies')
     cur=conn.cursor()
     
-    fn.ejecutar_sql('D:\\Desktop\\Universidad\\2024-2\\Analítica\\Repositorios\\ProyectoMarketing\\b_preprocesamiento.sql', cur)
+    fn.ejecutar_sql('b_preprocesamiento.sql', cur)
     
     movies=pd.read_sql('select * from movies_final', conn )
     #ratings=pd.read_sql('select * from ratings_final', conn)
@@ -135,8 +135,8 @@ def main(list_user):
         
         recomendaciones_todos=pd.concat([recomendaciones_todos, recomendaciones])
 
-    recomendaciones_todos.to_excel('D:\\Desktop\\Universidad\\2024-2\\Analítica\\Repositorios\\ProyectoMarketing\\salidas\\reco\\recomendaciones.xlsx')
-    recomendaciones_todos.to_csv('D:\\Desktop\\Universidad\\2024-2\\Analítica\\Repositorios\\ProyectoMarketing\\salidas\\reco\\recomendaciones.csv')
+    recomendaciones_todos.to_excel("salidas\\reco\\recomendaciones.xlsx")
+    recomendaciones_todos.to_csv('salidas\\reco\\recomendaciones.csv')
 
 
 if __name__=="__main__":
