@@ -60,7 +60,7 @@ movies_final=joblib.load('salidas\\movies_only.joblib')
 
 usuarios=pd.read_sql('select distinct userId from full_ratings',conn)
 
-#userId = 1
+userId = 1
 
 def recomendar(userId=sorted(list(usuarios['userId'].value_counts().index))):
     
