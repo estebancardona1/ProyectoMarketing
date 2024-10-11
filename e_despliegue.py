@@ -19,7 +19,7 @@ from sklearn import neighbors
 
 def preprocesar():
 
-    #### conectar_base_de_Datos#################
+    #### conectar_base_de_Datos##################
     conn=sql.connect('data\\db_movies')
     cur=conn.cursor()
     
